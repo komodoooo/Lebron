@@ -11,7 +11,7 @@ The program currently supports the following broswers:
 
 ###### * only the stable versions of these broswers are actually supported
 # Compile
-First, edit the code and add your discord webhook inside che constant **webhook**.
+First, edit the code and add your discord webhook inside the constant **webhook**.
 
 Your webhook must be hex encoded. _(without 0x)_<br>
 This is just a easy information hiding step to not let someone find your webhook analyzing the string in the executable at first.
