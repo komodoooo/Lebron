@@ -1,7 +1,7 @@
 # Lebron
 ![image](https://github.com/komodoooo/Lebron/assets/68278515/85f25bab-f83b-401b-ada3-8c3afc11c32f)
 
-A Chromium-based info stealer for windows, sends credentials via a discord webhook
+A Chromium-based info stealer for windows, sends credentials & history via a discord webhook
 
 The program currently supports the following broswers:
 * Chrome
@@ -11,13 +11,23 @@ The program currently supports the following broswers:
 
 ###### * only the stable versions of these broswers are actually supported
 # Compile
-First, edit the code and add your discord webhook inside the constant **webhook**.
+1. **Requirements**  
+   Ensure the following tools are installed on your Windows machine:  
+   - `go`  
+   - `make`  
+   - `upx`  
 
-Your webhook must be hex encoded. _(without 0x)_<br>
-This is just a easy information hiding step to not let someone find your webhook analyzing the string in the executable at first.
+   You can use [Scoop](https://scoop.sh) for easy installation of these dependencies.
 
-Before compiling you must setup the dependencies, run _`make setup`_<br>
-After that you can finally run  _`make`_
+2. **Set Up Dependencies**  
+   Run the following command to set up the required dependencies:  
+   `make setup`
+3. **Build and Compress**  
+   Compile and compress the executable with the following command:  
+   `make build WEBHOOK="YOUR_DISCORD_WEBHOOK"`
+4. **Clean Up**  
+   Once the build is complete, you can remove temporary files with:  
+   `make clean`
 
 ## Notes
 I based myself on various detailed reads i found online.<br>
