@@ -24,8 +24,9 @@ The program currently supports the following broswers:
    `make setup`
 3. **Build and Compress**  
    Compile and compress the executable with the following command:  
-   `make build WEBHOOK="YOUR_DISCORD_WEBHOOK"`
-4. **Clean Up**  
+   `make build WEBHOOK="YOUR_DISCORD_WEBHOOK"`<br>
+   You can also set the compression level with `COMPRESSION_LEVEL` (1-9, default:7)
+5. **Clean Up**  
    Once the build is complete, you can remove temporary files with:  
    `make clean`
 
