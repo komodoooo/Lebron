@@ -10,6 +10,5 @@ setup:
 	go mod init lebron
 	go get github.com/mattn/go-sqlite3
 	go get github.com/billgraziano/dpapi
-	go install github.com/gatariee/gocheck@latest
 clean: go.mod go.sum
 	del /Q go.mod go.sum
