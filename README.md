@@ -3,6 +3,11 @@
 
 A Chromium-based info stealer for windows, sends credentials & history via a discord webhook
 
+> ⚠️ THIS DOES NOT WORK ANYMORE ⚠️<br>
+> Since Chrome v127+ Google implemented App-bound encryption which doesn't allow to decrypt any sensitive data to unknown processes.<br>
+> Most Active Chromium-based broswers has already inherited this feature, so you won't steal any password without doing cool tricks like process injection or tryin' to impersonate the broswer in some way (unless it's an outdated version)<br>
+> I will try to bypass this in future, probably implementing also go routines
+
 The program currently supports the following broswers:
 * Chrome
 * Edge
